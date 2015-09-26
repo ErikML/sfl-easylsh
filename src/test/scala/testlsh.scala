@@ -3,8 +3,9 @@ package easylsh.test
 import easylsh.Lsh
 import org.scalatest.{FlatSpec, Matchers}
 import breeze.linalg.DenseMatrix
+import scala.collection.parallel.ParSet
 
-class LshTest extends FlatSpec with Matchers{
+class LshTest extends FlatSpec with Matchers {
   behavior of "Lsh Example"
   
   
@@ -74,10 +75,10 @@ class LshTest extends FlatSpec with Matchers{
     val t1 = 1
     val c = 0.8
     val G1 = Lsh.buildGraph(V, I, sim, VHashTableCol, IHashCol, thresh, c, t1)
-    val Gtest1 = Map(0 -> Set(2), 2 -> Set(1), 3 -> Set(3))
+    val Gtest1 = Vector(ParSet((2, 11.0)), ParSet[(Int, Double)](), ParSet((1, 19.0)), ParSet((3, 31.0)))
     val t2 = 3
     val G2 = Lsh.buildGraph(V, I, sim, VHashTableCol, IHashCol, thresh, c, t2)
-    val Gtest2 = Map(0 -> Set(2), 1 -> Set(3), 2 -> Set(1,3), 3 -> Set(3))
+    val Gtest2 = Vector(ParSet((2, 11.0)), ParSet((3,17.0)), ParSet((1, 19.0),(3, 24.0)), ParSet((3, 31.0)))
     Gtest1 should === (G1)
     Gtest2 should === (G2)
   }

@@ -2,7 +2,7 @@ package easylsh
 
 import breeze.linalg.DenseMatrix
 import breeze.stats.distributions.Gaussian
-import scala.collection.parallel.immutable.{ParRange,ParSeq}
+import scala.collection.parallel.immutable.{ParRange,ParSeq, ParSet}
 import scala.math.{acos, log, pow, ceil, sqrt, Pi}
 import scala.collection.mutable
 
@@ -15,7 +15,7 @@ object Lsh {
       gaussian01Matrix: DenseMatrix[Double])
     : ParSeq[Array[Int]] = {
     val randomProjections = data * gaussian01Matrix
-    val numPoints = data.cols
+    val numPoints = data.rows
     val pr = ParRange(0,numPoints,step=1,inclusive=false)
     val hashedData: ParSeq[Array[Int]] = pr.map {i =>
       val row = randomProjections(i,::).t.toArray
@@ -94,16 +94,24 @@ object Lsh {
       thresh: Vector[Double],
       c: Double,
       t: Int)
-    : Map[Int, Set[Int]] = {
-    val ItNN = ParRange(0, I.length, step=1, inclusive=false).flatMap{i =>
+    : Vector[ParSet[(Int, Double)]] = {
+    var total = 0 
+    val ItNNGains = ParRange(0, I.length, step=1, inclusive=false).flatMap{i =>
+      val tNNGains = mutable.Set[(Int, (Int, Double))]()
       val tNN = mutable.Set[Int]()
       var currBigTable = 0
       var currLittleTable = 0
       while(tNN.size < t && currBigTable < VHashTableCol.length) {
-        val currHash = IHashCol(currBigTable)(i)(currLittleTable)
+        val currHashBt = IHashCol(currBigTable)
+        val currHashLt = currHashBt(i)
+        val currHash = currHashLt(currLittleTable)
         val currCollisions = VHashTableCol(currBigTable)(currLittleTable).getOrElse(currHash,Set[Int]())
-        val currNN = currCollisions.filter(j => sim(V(j), I(i)) >= c * thresh(currBigTable))
+        val currGains = currCollisions.view.filter(j => !tNN.contains(j))
+              .map(j => (j, (i, sim(V(j), I(i))))).filter(_._2._2 >= c * thresh(currBigTable))
+              .take(t - tNN.size).toSet
+        val currNN = currGains.map{case(j, _) => j}
         tNN ++= currNN
+        tNNGains ++= currGains
         if(currLittleTable >= VHashTableCol(currBigTable).length - 1) {
           currLittleTable = 0
           currBigTable += 1
@@ -111,8 +119,16 @@ object Lsh {
           currLittleTable += 1
         }
       }
-      tNN.map(j => (j,i))
+      if(tNNGains.size >= t) {
+        total += 1
+      }
+      tNNGains.toList
     }
-    ItNN.groupBy(_._1).map{case (k,v) => (k, v.map(_._2).toSet.seq)}.seq
+    println(s"fraction with t neighbors ${total * 1.0 / I.length}")
+    val mapGraph = ItNNGains.groupBy(_._1).map{case (k,v) => (k, v.map(_._2).toSet)}.seq
+    ParRange(0, V.length, step=1, inclusive=false).map{j =>
+      mapGraph.getOrElse(j, ParSet[(Int, Double)]())
+    }.seq.toVector
+    
   }
 }
