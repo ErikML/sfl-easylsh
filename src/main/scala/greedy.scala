@@ -3,7 +3,7 @@ package sfl
 import scala.util.Random
 import scala.collection.mutable
 import scala.collection.parallel.immutable.{ParRange, ParSet}
-import scala.math.{log, ceil, sqrt}
+import scala.math.{log, ceil, sqrt, min}
 import sampler.Sampler
 
 object Sfl {
@@ -25,7 +25,7 @@ object Sfl {
     val currMaxNeighbor = Array.fill[Double](n)(0.0)
     val prevGain = Array.fill[Double](n)(Double.PositiveInfinity)
     var currIter = 0
-    val randomSetSize = ceil(n * (1.0 / k) * log(1 / eps)).toInt
+    val randomSetSize = min(ceil(n * (1.0 / k) * log(1 / eps)).toInt, n)
     val r = ParRange(0, n, step=1, inclusive=false)
     val getGain = {i: Int =>
       r.map {j =>
@@ -69,13 +69,13 @@ object Sfl {
     val currMaxNeighbor = Array.fill[Double](n)(0.0)
     val prevGain = Array.fill[Double](n)(Double.PositiveInfinity)
     var currIter = 0
-    val randomSetSize = ceil(n * (1.0 / k) * log(1 / eps)).toInt
+    val randomSetSize = min(ceil(n * (1.0 / k) * log(1 / eps)).toInt, n)
     val getGain = {i: Int =>
       graph(i).map {case (j, cij) =>
-        val scaleFactor = if(rescale) sqrt(dot(V(i), V(i))) else 1
+        val scaleFactor = if(rescale) sqrt(dot(V(j), V(j))) else 1.0
         val curr = currMaxNeighbor(j)
-        val jGain = if(cij > curr) cij - curr else 0
-        scaleFactor * jGain
+        val jGain = if(scaleFactor * cij > curr) scaleFactor * cij - curr else 0
+        jGain
       }.sum
     }
     val A = mutable.Set[Int]()
@@ -94,7 +94,7 @@ object Sfl {
         }
       }
       graph(currMaxElem).foreach{case(j,cij) =>
-        val scaleFactor = if(rescale) sqrt(dot(V(currMaxElem), V(currMaxElem))) else 1.0
+        val scaleFactor = if(rescale) sqrt(dot(V(j), V(j))) else 1.0
         val curr = currMaxNeighbor(j)
         if(cij * scaleFactor > curr) {
           currMaxNeighbor(j) = cij * scaleFactor

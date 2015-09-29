@@ -21,13 +21,15 @@ class Sampler(startSize: Int) {
   var prev_seen = Map[Int, Int]()
   
   def subset(s: Int): Set[Int] = {
-    for(i <- 0 to s-1) {
+    val shift = if(s>=currSize) (1 + s-currSize) else 0
+    for(i <- 0 to s-1 - shift) {
       val m = Random.nextInt(currSize-i)
       val copy = this.arr(m)
       this.arr(m) = this.arr(currSize-i-1)
       this.arr(currSize-i-1) = copy
     }
-    this.prev_seen = (this.currSize - s to this.currSize - 1).map(i => (this.arr(i), i)).toMap
+    val r = if(s>=currSize) (0 to this.currSize-1) else (this.currSize - s to this.currSize - 1)
+    this.prev_seen = r.map(i => (this.arr(i), i)).toMap
     this.prev_seen.keySet
   }
   
